@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Museo Virtual Indígena VR</title>
+  <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
+
+  <script>
+    // =====================================================================
+    // TELETRANSPORTE AL MIRAR UNA OBRA
+    // Uso:  gaze-teleport="to: x 0 z; look: x y z"
+    //   to   = dónde queda parado el visitante (coordenadas del mundo)
+    //   look = punto hacia el que queda mirando (la obra)
+    // El tiempo de mirada se cambia en el cursor (fuse-timeout, en milisegundos).
+    // =====================================================================
+    var enMovimiento = false;
+
+    function teletransportar(destino, mira) {
+      var rig = document.getElementById('rig');
+      var cam = document.getElementById('camara');
+      var fundido = document.getElementById('fundido');
+      if (enMovimiento) return;
+
+      // si ya está parado en ese lugar, no hace nada
+      var pos = rig.object3D.position;
+      if (Math.hypot(pos.x - destino.x, pos.z - destino.z) < 0.1) return;
+
+      enMovimiento = true;
+      fundido.emit('apagar');                      // pantalla se oscurece
+
+      setTimeout(function () {
+        // mueve al visitante
+        rig.object3D.position.set(destino.x, 0, destino.z);
+
+        // lo gira para que quede mirando de frente a la obra
+        var yaw = Math.atan2(-(mira.x - destino.x), -(mira.z - destino.z));
+        rig.object3D.rotation.y = yaw - cam.object3D.rotation.y;
+
+        fundido.emit('encender');                  // pantalla vuelve a aclararse
+        setTimeout(function () { enMovimiento = false; }, 500);
+      }, 380);
+    }
+
+    AFRAME.registerComponent('gaze-teleport', {
+      schema: {
+        to:   { type: 'vec3' },
+        look: { type: 'vec3' }
+      },
+      init: function () {
+        var el = this.el;
+        var self = this;
+        // el cursor emite "click" cuando se cumple el tiempo de mirada
+        el.addEventListener('click', function () {
+          teletransportar(self.data.to, self.data.look);
+        });
+      }
+    });
+  </script>
+</head>
+<body>
+
+<a-scene background="color: #120d09">
+
+  <!-- ARCHIVOS: modelos 3D y texturas -->
+  <a-assets timeout="10000">
+    <a-asset-item id="obra1" src="./assets/1.glb"></a-asset-item>
+    <a-asset-item id="obra2" src="./assets/2.glb"></a-asset-item>
+    <a-asset-item id="obra3" src="./assets/3.glb"></a-asset-item>
+    <a-asset-item id="obra4" src="./assets/4.glb"></a-asset-item>
+    <a-asset-item id="obra5" src="./assets/5.glb"></a-asset-item>
+ 
+
+    <img id="tex-suelo" src="./assets/pisoMuseo (2).jpg">
+    <img id="tex-pared" src="./assets/paredMuseo.jpg">
+    <img id="tex-techo" src="./assets/techoMuseo.png">
+    <img id="tex-panel" src="./assets/tu-patron-indigena.jpg">
+
+    <img id="tex-alfombra" src="./assets/Productos 5 _ OR Tapestries.jpg">
+    <img id="img1" src="./assets/image.png" alt="">
+    
+    <!-- Imágenes para los cuadros del fondo -->
+    <img id="img-cuadro1" src="./assets/image.png"> 
+    <img id="img-cuadro2" src="./assets/download.jpg"> 
+    <img id="img-cuadro3" src="./assets/download (2).jpg"> 
+    <img id="img-cuadro4" src="./assets/download (1).jpg"> 
+    <img id="img-cuadro5" src="./assets/Art of Midewiwin.jpg">
+
+    <!-- Imágenes para los paneles laterales -->
+    <img id="img-panel1" src="./assets/download (3).jpg">
+    <img id="img-panel2" src="./assets/Katriona Chapman Illustration Blog_ Mayan art.jpg">
+    <img id="img-panel3" src="./assets/huitzilopochtli.jpg">
+    <img id="img-panel4" src="./assets/download (4).jpg">
+  </a-assets>
+
+  <!-- ============ VISITANTE ============
+       "rig" es el cuerpo del visitante (es lo que se teletransporta).
+       "camara" es la cabeza (look-controls). El cursor se activa al mirar un objeto:
+       fuse-timeout = TIEMPO DE MIRADA para teletransportarse (1500 = 1.5 segundos). -->
+  <a-entity id="rig" position="0 0 3.5">
+    <a-entity id="camara" camera look-controls position="0 1.6 0">
+      <a-cursor fuse="true" fuse-timeout="1500" raycaster="objects: .interactable"
+                color="#e6b34a" geometry="radiusInner: 0.015; radiusOuter: 0.025"></a-cursor>
+
+      <!-- cortina negra para el efecto de fundido al teletransportarse -->
+      <a-plane id="fundido" position="0 0 -0.2" width="4" height="4"
+               material="shader: flat; color: #000; transparent: true; opacity: 0; depthTest: false; depthWrite: false"
+               animation__apagar="property: material.opacity; to: 1; dur: 350; easing: easeInQuad; startEvents: apagar"
+               animation__encender="property: material.opacity; to: 0; dur: 450; easing: easeOutQuad; startEvents: encender"></a-plane>
+    </a-entity>
+  </a-entity>
+
+  <!-- LUCES GENERALES -->
+  <a-light type="ambient" color="#ffecd1" intensity="0.5"></a-light>
+  <a-light type="hemisphere" color="#ffe9cc" ground-color="#3a2a1a" intensity="0.35"></a-light>
+
+  <!-- SALA: suelo, techo y 4 paredes -->
+  <a-plane rotation="-90 0 0" width="10" height="10" material="src: #tex-suelo; repeat: 4 4" color="#55534f"></a-plane>
+  <a-plane position="0 4 0" rotation="90 0 0" width="10" height="10" material="src: #tex-techo; repeat: 2 2" color="#554433"></a-plane>
+  <a-box position="0 2 -5" width="10" height="4" depth="0.1" material="src: #tex-pared; repeat: 2 1" color="#b7a995"></a-box>
+  <a-box position="0 2 5" width="10" height="4" depth="0.1" material="src: #tex-pared; repeat: 2 1" color="#b7a995"></a-box>
+  <a-box position="-5 2 0" width="0.1" height="4" depth="10" material="src: #tex-pared; repeat: 2 1" color="#b7a995"></a-box>
+  <a-box position="5 2 0" width="0.1" height="4" depth="10" material="src: #tex-pared; repeat: 2 1" color="#b7a995"></a-box>
+
+  <!-- ALFOMBRA -->
+  <a-plane position="0 0.005 -0.5" rotation="-90 0 0" width="3.6" height="7.2" color="#2b1f16"></a-plane>
+  <a-plane position="0 0.01 -0.5" rotation="-90 0 0" width="3.2" height="6.8" material="src: #tex-alfombra; repeat: 1 2" color="#5a4332"></a-plane>
+
+  <!-- LETRERO DEL FONDO -->
+  
+
+
+  <!-- ============ OBRA PRINCIPAL (centro de la sala) ============
+       El visitante se para en (0, 0, 1.8) mirando hacia la obra.
+       La leyenda ahora está a la DERECHA de la plataforma, girada hacia donde él queda. -->
+  <a-entity position="0 0 -0.5">
+    <!-- plataforma y pedestal -->
+    <a-circle rotation="-90 0 0" position="0 0.02 0" radius="1.8" material="shader: flat; color: #e6b34a; opacity: 0.14; transparent: true"></a-circle>
+    <a-cylinder position="0 0.06 0" radius="1.25" height="0.12" color="#3a3026"></a-cylinder>
+    <a-cylinder position="0 0.18 0" radius="1" height="0.12" color="#66615a"></a-cylinder>
+    <a-torus position="0 0.25 0" rotation="90 0 0" radius="1" radius-tubular="0.02" material="shader: flat; color: #e6b34a"></a-torus>
+    
+
+    <!-- haz de luz que respira -->
+    <a-cone position="0 2 0" radius-bottom="1" radius-top="0.15" height="4" open-ended="true"
+            material="shader: flat; color: #ffd98a; opacity: 0.08; transparent: true; side: double; depthWrite: false"
+            animation="property: material.opacity; from: 0.05; to: 0.13; dir: alternate; loop: true; dur: 3000"></a-cone>
+
+    <!-- foco fuerte que pulsa -->
+    <a-entity id="meta-principal" position="0 1.9 0"></a-entity>
+    <a-light type="spot" position="0 3.9 0" target="#meta-principal" angle="28" penumbra="0.5" intensity="4" color="#fff1cc" distance="9"
+             animation="property: light.intensity; from: 3.2; to: 4.6; dir: alternate; loop: true; dur: 3000"></a-light>
+
+    <!-- la obra: flota (animación de afuera), gira (la del medio) y crece al mirarla (la de adentro) -->
+    <a-entity position="0 0.38 0" animation="property: position; to: 0 0.58 0; dir: alternate; loop: true; dur: 2500">
+      <a-entity animation="property: rotation; to: 0 360 0; loop: true; dur: 14000; easing: linear">
+        
+        <a-entity class="interactable" gaze-teleport="to: 0 0 1.8; look: 0 1 -0.5"
+                  gltf-model="#obra5" scale="1.1 1.1 1.1"
+                  animation__crece="property: scale; to: 1.3 1.3 1.3; startEvents: mouseenter; dur: 400"
+                  animation__vuelve="property: scale; to: 1.1 1.1 1.1; startEvents: mouseleave; dur: 400"></a-entity>
+      
+      
+                </a-entity>
+    </a-entity>
+
+    <!-- leyenda (a la derecha de la plataforma): se agranda al mirarla -->
+    <a-cylinder position="2.02 0.405 0.167" radius="0.03" height="0.81" color="#3a3026"></a-cylinder>
+    <a-plane class="interactable" gaze-teleport="to: 0 0 1.8; look: 0 1 -0.5"
+             position="2 1.3 0.2" rotation="-8 -35 0" scale="1.8 1.8 1.8" width="0.82" height="0.54" color="#1a110b"
+             animation__crece="property: scale; to: 2.8 2.8 2.8; startEvents: mouseenter; dur: 350"
+             animation__vuelve="property: scale; to: 1.8 1.8 1.8; startEvents: mouseleave; dur: 300">
+      <a-plane width="0.86" height="0.58" position="0 0 -0.004" color="#e6b34a"></a-plane>
+      <a-text value="Alto dignatario de pie" position="0 0.2 0.01" align="center" width="0.78" color="#e6b34a"></a-text>
+      <a-text value="Figura humana masculina sosteniendo un baston de mando. Simboliza autoridad, la sabiduria institucional y el registro de la historia. " position="0 0.1 0.01" align="center" baseline="top" width="0.72" wrap-count="30" color="#f1e8d6"></a-text>
+    </a-plane>
+  </a-entity>
+
+
+  <!-- ============ PARED IZQUIERDA ============
+       El visitante se para a 1.9 m frente al pedestal (mirando hacia la pared).
+       La leyenda queda a su derecha, girada hacia él. -->
+
+  <!-- OBRA 1 -->
+  <a-entity position="-3.8 0 -2">
+    <!-- Luz para la escultura -->
+    <a-entity id="meta1" position="0 1.2 0"></a-entity>
+    <a-cylinder position="1 3.9 0" radius="0.07" height="0.2" color="#1f1a17"></a-cylinder>
+    <a-light type="spot" position="1 3.8 0" target="#meta1" angle="35" penumbra="0.4" intensity="2.2" color="#ffe0a3" distance="8"></a-light>
+    
+    <!-- Luz para el panel lateral -->
+    <a-entity id="meta-panel1" position="-1.14 2 0"></a-entity>
+    <a-cylinder position="-0.4 3.9 0" radius="0.05" height="0.15" color="#1f1a17"></a-cylinder>
+    <a-light type="spot" position="-0.4 3.8 0" target="#meta-panel1" angle="45" penumbra="0.5" intensity="1.5" color="#ffe0a3" distance="6"></a-light>
+
+    <!-- panel de la pared con información (shader: flat aplicado) -->
+    <a-plane position="-1.15 2 0" rotation="0 90 0" width="2.1" height="3.1" color="#e6b34a"></a-plane>
+    <a-plane position="-1.14 2 0" rotation="0 90 0" width="2" height="3" material="src: #img-panel1; shader: flat; side: double"></a-plane>
+    
+    <!-- pedestal -->
+    <a-box position="0 0.475 0" width="0.8" height="0.95" depth="0.8" color="#66615a"></a-box>
+    <a-box position="0 0.5 0" width="0.85" height="0.05" depth="0.85" color="#e6b34a"></a-box>
+    <a-box position="0 0.975 0" width="0.9" height="0.05" depth="0.9" color="#3a3026"></a-box>
+    <!-- obra (la de afuera gira, la de adentro crece al mirarla) -->
+    <a-entity position="0 1.2 0" animation="property: rotation; to: 0 360 0; loop: true; dur: 12000; easing: linear">
+      <a-entity class="interactable" gaze-teleport="to: -1.9 0 -2; look: -3.8 1.2 -2"
+                gltf-model="#obra1" scale="0.090 0.070 0.100"
+                animation__crece="property: scale; to: 0.098 0.080 0.105; startEvents: mouseenter; dur: 400"
+                animation__vuelve="property: scale; to: 0.090 0.070 0.100; startEvents: mouseleave; dur: 400"></a-entity>
+    </a-entity>
+    <!-- leyenda -->
+    <a-cylinder position="0.17 0.385 -1.63" radius="0.025" height="0.77" color="#3a3026"></a-cylinder>
+    <a-plane class="interactable" gaze-teleport="to: -1.9 0 -2; look: -3.8 1.2 -2"
+             position="0.2 1.25 -1.6" rotation="-8 50 0" scale="1.8 1.8 1.8" width="0.82" height="0.54" color="#1a110b"
+             animation__crece="property: scale; to: 2.8 2.8 2.8; startEvents: mouseenter; dur: 350"
+             animation__vuelve="property: scale; to: 1.8 1.8 1.8; startEvents: mouseleave; dur: 300">
+      <a-plane width="0.86" height="0.58" position="0 0 -0.004" color="#e6b34a"></a-plane>
+      <a-text value="Tradicion muisca" position="0 0.2 0.01" align="center" width="0.78" color="#e6b34a"></a-text>
+      <a-text value="Representacion arqueologica que refleja el respeto a los ancestros, la jerarquia de los sacerdotes y los rituales de ofrenda propios de los pueblos prehispanicos de los Andes colombianos." position="0 0.1 0.01" align="center" baseline="top" width="0.72" wrap-count="30" color="#f1e8d6"></a-text>
+    </a-plane>
+  </a-entity>
+
+  <!-- OBRA 2 -->
+  <a-entity position="-3.8 0 1.5">
+    <!-- Luz para la escultura -->
+    <a-entity id="meta2" position="0 1.2 0"></a-entity>
+    <a-cylinder position="1 3.9 0" radius="0.07" height="0.2" color="#1f1a17"></a-cylinder>
+    <a-light type="spot" position="1 3.8 0" target="#meta2" angle="35" penumbra="0.4" intensity="2.2" color="#ffe0a3" distance="8"></a-light>
+    
+    <!-- Luz para el panel lateral -->
+    <a-entity id="meta-panel2" position="-1.14 2 0"></a-entity>
+    <a-cylinder position="-0.4 3.9 0" radius="0.05" height="0.15" color="#1f1a17"></a-cylinder>
+    <a-light type="spot" position="-0.4 3.8 0" target="#meta-panel2" angle="45" penumbra="0.5" intensity="1.5" color="#ffe0a3" distance="6"></a-light>
+
+    <a-plane position="-1.15 2 0" rotation="0 90 0" width="2.1" height="3.1" color="#e6b34a"></a-plane>
+    <a-plane position="-1.14 2 0" rotation="0 90 0" width="2" height="3" material="src: #img-panel2; shader: flat; side: double"></a-plane>
+    
+    <a-box position="0 0.475 0" width="0.8" height="0.95" depth="0.8" color="#66615a"></a-box>
+    <a-box position="0 0.5 0" width="0.85" height="0.05" depth="0.85" color="#e6b34a"></a-box>
+    <a-box position="0 0.975 0" width="0.9" height="0.05" depth="0.9" color="#3a3026"></a-box>
+    <a-entity position="0 1.2 0" animation="property: rotation; to: 0 -360 0; loop: true; dur: 14000; easing: linear">
+      <a-entity class="interactable" gaze-teleport="to: -1.9 0 1.5; look: -3.8 1.2 1.5"
+                gltf-model="#obra2" scale="0.682 0.516 0.598"
+                animation__crece="property: scale; to: 0.887 0.671 0.777; startEvents: mouseenter; dur: 400"
+                animation__vuelve="property: scale; to: 0.682 0.516 0.598; startEvents: mouseleave; dur: 400"></a-entity>
+    </a-entity>
+    <a-cylinder position="0.17 0.385 -1.63" radius="0.025" height="0.77" color="#3a3026"></a-cylinder>
+    <a-plane class="interactable" gaze-teleport="to: -1.9 0 1.5; look: -3.8 1.2 1.5"
+             position="0.2 1.25 -1.6" rotation="-8 50 0" scale="1.8 1.8 1.8" width="0.82" height="0.54" color="#1a110b"
+             animation__crece="property: scale; to: 2.8 2.8 2.8; startEvents: mouseenter; dur: 350"
+             animation__vuelve="property: scale; to: 1.8 1.8 1.8; startEvents: mouseleave; dur: 300">
+      <a-plane width="0.86" height="0.58" position="0 0 -0.004" color="#e6b34a"></a-plane>
+      <a-text value="Figura antropomorfa de la cultura Tairona" position="0 0.2 0.01" align="center" width="0.78" color="#e6b34a"></a-text>
+      <a-text value="Representa deidades menores o chamanes en estado de trance chamanico, asociados con la fertilidad, la conexion con la naturaleza y los ciclos vitales de la tierra." position="0 0.1 0.01" align="center" baseline="top" width="0.72" wrap-count="30" color="#f1e8d6"></a-text>
+    </a-plane>
+  </a-entity>
+
+
+  <!-- ============ PARED DERECHA ============
+       El visitante se para a 1.9 m frente al pedestal (mirando hacia la pared).
+       La leyenda queda a su izquierda, girada hacia él. -->
+
+  <!-- OBRA 3 -->
+  <a-entity position="3.8 0 -2">
+    <!-- Luz para la escultura -->
+    <a-entity id="meta3" position="0 1.2 0"></a-entity>
+    <a-cylinder position="-1 3.9 0" radius="0.07" height="0.2" color="#1f1a17"></a-cylinder>
+    <a-light type="spot" position="-1 3.8 0" target="#meta3" angle="35" penumbra="0.4" intensity="2.2" color="#ffe0a3" distance="8"></a-light>
+    
+    <!-- Luz para el panel lateral -->
+    <a-entity id="meta-panel3" position="1.14 2 0"></a-entity>
+    <a-cylinder position="0.4 3.9 0" radius="0.05" height="0.15" color="#1f1a17"></a-cylinder>
+    <a-light type="spot" position="0.4 3.8 0" target="#meta-panel3" angle="45" penumbra="0.5" intensity="1.5" color="#ffe0a3" distance="6"></a-light>
+
+    <a-plane position="1.15 2 0" rotation="0 -90 0" width="2.1" height="3.1" color="#e6b34a"></a-plane>
+    <a-plane position="1.14 2 0" rotation="0 -90 0" width="2" height="3" material="src: #img-panel3; shader: flat; side: double"></a-plane>
+    
+    
+    <a-box position="0 0.475 0" width="0.8" height="0.95" depth="0.8" color="#66615a"></a-box>
+    <a-box position="0 0.5 0" width="0.85" height="0.05" depth="0.85" color="#e6b34a"></a-box>
+    <a-box position="0 0.975 0" width="0.9" height="0.05" depth="0.9" color="#3a3026"></a-box>
+    <a-entity position="0 1.2 0" animation="property: rotation; to: 0 -360 0; loop: true; dur: 12000; easing: linear">
+      <a-entity class="interactable" gaze-teleport="to: 1.9 0 -2; look: 3.8 1.2 -2"
+                gltf-model="#obra3" scale="0.486 0.452 0.481"
+                animation__crece="property: scale; to: 0.572 0.528 0.565; startEvents: mouseenter; dur: 400"
+                animation__vuelve="property: scale; to: 0.486 0.452 0.481; startEvents: mouseleave; dur: 400"></a-entity>
+    </a-entity>
+    <a-cylinder position="-0.17 0.385 -1.63" radius="0.025" height="0.77" color="#3a3026"></a-cylinder>
+    <a-plane class="interactable" gaze-teleport="to: 1.9 0 -2; look: 3.8 1.2 -2"
+             position="-0.2 1.25 -1.6" rotation="-8 -47 0" scale="1.8 1.8 1.8" width="0.82" height="0.54" color="#1a110b"
+             animation__crece="property: scale; to: 2.8 2.8 2.8; startEvents: mouseenter; dur: 350"
+             animation__vuelve="property: scale; to: 1.8 1.8 1.8; startEvents: mouseleave; dur: 300">
+      <a-plane width="0.86" height="0.58" position="0 0 -0.004" color="#e6b34a"></a-plane>
+      <a-text value="Chaman" position="0 0.2 0.01" align="center" width="0.78" color="#e6b34a"></a-text>
+      <a-text value="Representa al chaman transformado espiritualmente a traves de la fauna sagrada, integrando el poder del vuelo y la conexion con el mundo animal en las ceremonias de sanacion." position="0 0.1 0.01" align="center" baseline="top" width="0.72" wrap-count="30" color="#f1e8d6"></a-text>
+    </a-plane>
+  </a-entity>
+
+  <!-- OBRA 4 -->
+  <a-entity position="3.8 0 1.5">
+    <!-- Luz para la escultura -->
+    <a-entity id="meta4" position="0 1.2 0"></a-entity>
+    <a-cylinder position="-1 3.9 0" radius="0.07" height="0.2" color="#1f1a17"></a-cylinder>
+    <a-light type="spot" position="-1 3.8 0" target="#meta4" angle="35" penumbra="0.4" intensity="2.2" color="#ffe0a3" distance="8"></a-light>
+    
+    <!-- Luz para el panel lateral -->
+    <a-entity id="meta-panel4" position="1.14 2 0"></a-entity>
+    <a-cylinder position="0.4 3.9 0" radius="0.05" height="0.15" color="#1f1a17"></a-cylinder>
+    <a-light type="spot" position="0.4 3.8 0" target="#meta-panel4" angle="45" penumbra="0.5" intensity="1.5" color="#ffe0a3" distance="6"></a-light>
+
+    <a-plane position="1.15 2 0" rotation="0 -90 0" width="2.1" height="3.1" color="#e6b34a"></a-plane>
+    <a-plane position="1.14 2 0" rotation="0 -90 0" width="2" height="3" material="src: #img-panel4; shader: flat; side: double"></a-plane>
+   
+    <a-box position="0 0.475 0" width="0.8" height="0.95" depth="0.8" color="#66615a"></a-box>
+    <a-box position="0 0.5 0" width="0.85" height="0.05" depth="0.85" color="#e6b34a"></a-box>
+    <a-box position="0 0.975 0" width="0.9" height="0.05" depth="0.9" color="#3a3026"></a-box>
+    <a-entity position="0 1.2 0" animation="property: rotation; to: 0 -360 0; loop: true; dur: 11000; easing: linear">
+      <a-entity class="interactable" gaze-teleport="to: 1.9 0 1.5; look: 3.8 1.2 1.5"
+                gltf-model="#obra4" scale="0.60 0.60 0.60"
+                animation__crece="property: scale; to: 0.70 0.70 0.70; startEvents: mouseenter; dur: 400"
+                animation__vuelve="property: scale; to: 0.60 0.60 0.60; startEvents: mouseleave; dur: 400"></a-entity>
+    </a-entity>
+    <a-cylinder position="-0.17 0.385 -1.63" radius="0.025" height="0.77" color="#3a3026"></a-cylinder>
+    <a-plane class="interactable" gaze-teleport="to: 1.9 0 1.5; look: 3.8 1.2 1.5"
+             position="-0.2 1.25 -1.6" rotation="-8 -47 0" scale="1.8 1.8 1.8" width="0.82" height="0.54" color="#1a110b"
+             animation__crece="property: scale; to: 2.8 2.8 2.8; startEvents: mouseenter; dur: 350"
+             animation__vuelve="property: scale; to: 1.8 1.8 1.8; startEvents: mouseleave; dur: 300">
+      <a-plane width="0.86" height="0.58" position="0 0 -0.004" color="#e6b34a"></a-plane>
+      <a-text value="Talla chamanica en piedra" position="0 0.2 0.01" align="center" width="0.78" color="#e6b34a"></a-text>
+      <a-text value="Inspirada en los monolitos de San Agustin, los cuales representan deidades tutelares, espiritus de la naturaleza y chamanes protectores que median entre el mundo terrenal y espiritual." position="0 0.1 0.01" align="center" baseline="top" width="0.72" wrap-count="30" color="#f1e8d6"></a-text>
+    </a-plane>
+  </a-entity>  <!-- ============ CILINDROS DECORATIVOS ============ -->
+  <!-- Pegados a los bordes de la alfombra, en el extremo del fondo, y del piso al techo -->
+  <a-cylinder position="-2.1 2 -4.1" radius="0.3" height="4" color="#8a5a3c"></a-cylinder>
+  <a-cylinder position="-2.1 0.2 -4.1" radius="0.33" height="0.1" color="#e6b34a"></a-cylinder>
+  <a-cylinder position="-2.1 3.8 -4.1" radius="0.33" height="0.1" color="#e6b34a"></a-cylinder>
+  <a-cylinder position="2.1 2 -4.1" radius="0.3" height="4" color="#8a5a3c"></a-cylinder>
+  <a-cylinder position="2.1 0.2 -4.1" radius="0.33" height="0.1" color="#e6b34a"></a-cylinder>
+  <a-cylinder position="2.1 3.8 -4.1" radius="0.33" height="0.1" color="#e6b34a"></a-cylinder>
+
+
+  <!-- ============ CUADROS (pared de atrás del visitante) ============
+       El visitante se para a 2.1 m frente a cada cuadro, en (x, 0, 2.9), mirando la pared.
+       Tanto el cuadro como su leyenda activan el teletransporte. -->
+
+  <!-- PINTURA 1 -->
+  <a-plane position="0 2.1 4.94" rotation="0 180 0" width="2.12" height="1.42" color="#2b1f16"></a-plane>
+  <a-plane class="interactable" gaze-teleport="to: 0 0 2.9; look: 0 2.1 4.9"
+           position="0 2.1 4.93" rotation="0 180 0" width="2.0" height="1.3" material="src: #img-cuadro1"></a-plane>
+  <!-- leyenda: al mirarla se agranda -->
+  <a-plane class="interactable" gaze-teleport="to: 0 0 2.9; look: 0 2.1 4.9"
+           position="0 0.75 4.92" rotation="0 180 0" scale="1.2 1.2 1.2" width="0.82" height="0.54" color="#1a110b"
+           animation__crece="property: scale; to: 2.2 2.2 2.2; startEvents: mouseenter; dur: 350"
+           animation__vuelve="property: scale; to: 1.2 1.2 1.2; startEvents: mouseleave; dur: 300">
+    <a-plane width="0.86" height="0.58" position="0 0 -0.004" color="#e6b34a"></a-plane>
+    <a-text value="El encuentro sagrado" position="0 0.2 0.01" align="center" width="0.78" color="#e6b34a"></a-text>
+    <a-text value="La escena muestra a un jaguar enfrentando una gran serpiente de agua. Se aprecian bandas con glifos y simbolos que contextualizan la narrativa mitica del equilibrio entre la luz y la oscuridad, el cielo y la tierra." position="0 0.1 0.01" align="center" baseline="top" width="0.72" wrap-count="30" color="#f1e8d6"></a-text>
+  </a-plane>
+
+  <!-- PINTURA 2 -->
+  <a-plane position="-3 2.0 4.94" rotation="0 180 0" width="1.12" height="1.52" color="#2b1f16"></a-plane>
+  <a-plane class="interactable" gaze-teleport="to: -3 0 2.9; look: -3 2 4.9"
+           position="-3 2.0 4.93" rotation="0 180 0" width="1.0" height="1.4" material="src: #img-cuadro2"></a-plane>
+  <!-- leyenda: al mirarla se agranda -->
+  <a-plane class="interactable" gaze-teleport="to: -3 0 2.9; look: -3 2 4.9"
+           position="-3 0.75 4.92" rotation="0 180 0" scale="1.2 1.2 1.2" width="0.82" height="0.54" color="#1a110b"
+           animation__crece="property: scale; to: 2.2 2.2 2.2; startEvents: mouseenter; dur: 350"
+           animation__vuelve="property: scale; to: 1.2 1.2 1.2; startEvents: mouseleave; dur: 300">
+    <a-plane width="0.86" height="0.58" position="0 0 -0.004" color="#e6b34a"></a-plane>
+    <a-text value="Tairona" position="0 0.2 0.01" align="center" width="0.78" color="#e6b34a"></a-text>
+    <a-text value="Referencia directa del arte textil de las culturas prehispanicas de Colombia. Cuenta con representaciones abstractas de la rana y del murcielago o aves sagradas. Era empleado para plasmar la dualidad y el orden del cosmos. " position="0 0.1 0.01" align="center" baseline="top" width="0.72" wrap-count="30" color="#f1e8d6"></a-text>
+  </a-plane>
+
+  <!-- PINTURA 3 -->
+  <a-plane position="3 2.1 4.94" rotation="0 180 0" width="1.52" height="1.12" color="#2b1f16"></a-plane>
+  <a-plane class="interactable" gaze-teleport="to: 3 0 2.9; look: 3 2.1 4.9"
+           position="3 2.1 4.93" rotation="0 180 0" width="1.4" height="1.0" material="src: #img-cuadro3"></a-plane>
+  <!-- leyenda: al mirarla se agranda -->
+  <a-plane class="interactable" gaze-teleport="to: 3 0 2.9; look: 3 2.1 4.9"
+           position="3 0.75 4.92" rotation="0 180 0" scale="1.2 1.2 1.2" width="0.82" height="0.54" color="#1a110b"
+           animation__crece="property: scale; to: 2.2 2.2 2.2; startEvents: mouseenter; dur: 350"
+           animation__vuelve="property: scale; to: 1.2 1.2 1.2; startEvents: mouseleave; dur: 300">
+    <a-plane width="0.86" height="0.58" position="0 0 -0.004" color="#e6b34a"></a-plane>
+    <a-text value="La espiral del tiempo" position="0 0.2 0.01" align="center" width="0.78" color="#e6b34a"></a-text>
+    <a-text value="La espiral funciona como mapa cronologico y espiritual donde conviven los animales de poder y elementos de la naturaleza, simbolizando el ciclo eterno del tiempo, las estaciones y la memoria ancestral." position="0 0.1 0.01" align="center" baseline="top" width="0.72" wrap-count="30" color="#f1e8d6"></a-text>
+  </a-plane>
+
+  <!-- PINTURA 4 -->
+  <a-plane position="-4.3 1.9 4.94" rotation="0 180 0" width="0.82" height="1.12" color="#2b1f16"></a-plane>
+  <a-plane class="interactable" gaze-teleport="to: -4.3 0 2.9; look: -4.3 1.9 4.9"
+           position="-4.3 1.9 4.93" rotation="0 180 0" width="0.7" height="1.0" material="src: #img-cuadro4"></a-plane>
+  <!-- leyenda: al mirarla se agranda -->
+  <a-plane class="interactable" gaze-teleport="to: -4.3 0 2.9; look: -4.3 1.9 4.9"
+           position="-4.3 0.75 4.92" rotation="0 180 0" scale="1.2 1.2 1.2" width="0.82" height="0.54" color="#1a110b"
+           animation__crece="property: scale; to: 2.2 2.2 2.2; startEvents: mouseenter; dur: 350"
+           animation__vuelve="property: scale; to: 1.2 1.2 1.2; startEvents: mouseleave; dur: 300">
+    <a-plane width="0.86" height="0.58" position="0 0 -0.004" color="#e6b34a"></a-plane>
+    <a-text value="Mascara ritual y dualidad cosmica" position="0 0.2 0.01" align="center" width="0.78" color="#e6b34a"></a-text>
+    <a-text value="Rostro chamanico con un 'tercer ojo'. Simboliza la clarividencia, la conexion con los planos superiores de conciencia y la dualidad espiritual dentro de los rituales de sanacion y chamanismo." position="0 0.1 0.01" align="center" baseline="top" width="0.72" wrap-count="30" color="#f1e8d6"></a-text>
+  </a-plane>
+<!-- linea de prueba 123 5555-->
+  <!-- PINTURA 5 -->
+  <a-plane position="4.4 2.0 4.94" rotation="0 180 0" width="0.82" height="1.02" color="#2b1f16"></a-plane>
+  <a-plane class="interactable" gaze-teleport="to: 4.4 0 2.9; look: 4.4 2 4.9"
+           position="4.4 2.0 4.93" rotation="0 180 0" width="0.7" height="0.9" material="src: #img-cuadro5"></a-plane>
+  <!-- leyenda: al mirarla se agranda -->
+  <a-plane class="interactable" gaze-teleport="to: 4.4 0 2.9; look: 4.4 2 4.9"
+           position="4.4 0.75 4.92" rotation="0 180 0" scale="1.2 1.2 1.2" width="0.82" height="0.54" color="#1a110b"
+           animation__crece="property: scale; to: 2.2 2.2 2.2; startEvents: mouseenter; dur: 350"
+           animation__vuelve="property: scale; to: 1.2 1.2 1.2; startEvents: mouseleave; dur: 300">
+    <a-plane width="0.86" height="0.58" position="0 0 -0.004" color="#e6b34a"></a-plane>
+    <a-text value="El mito de la creacion" position="0 0.2 0.01" align="center" width="0.78" color="#e6b34a"></a-text>
+    <a-text value="Representa una gran serpiente que muerde su propia cola. En su interior muestra al chaman, esferas energeticas y portales espirituales. La estetica imita el estilo sobre grabados en cortezas de arbol o cueros tradicionales. " position="0 0.1 0.01" align="center" baseline="top" width="0.72" wrap-count="30" color="#f1e8d6"></a-text>
+  </a-plane>
+
+  <!-- LUCES PARA LOS CUADROS (3 focos, cada uno ilumina varios cuadros) -->
+  <a-entity id="meta-izq" position="-3.6 2 4.9"></a-entity>
+  <a-entity id="meta-cen" position="0 2 4.9"></a-entity>
+  <a-entity id="meta-der" position="3.6 2 4.9"></a-entity>
+  <a-cylinder position="-3.4 3.9 3.2" radius="0.07" height="0.2" color="#1f1a17"></a-cylinder>
+  <a-light type="spot" position="-3.4 3.8 3.2" target="#meta-izq" angle="45" penumbra="0.5" intensity="2" color="#ffe0a3" distance="8"></a-light>
+  <a-cylinder position="0 3.9 3.2" radius="0.07" height="0.2" color="#1f1a17"></a-cylinder>
+  <a-light type="spot" position="0 3.8 3.2" target="#meta-cen" angle="45" penumbra="0.5" intensity="2" color="#ffe0a3" distance="8"></a-light>
+  <a-cylinder position="3.4 3.9 3.2" radius="0.07" height="0.2" color="#1f1a17"></a-cylinder>
+  <a-light type="spot" position="3.4 3.8 3.2" target="#meta-der" angle="45" penumbra="0.5" intensity="2" color="#ffe0a3" distance="8"></a-light>
+
+</a-scene>
+
+<!-- MÚSICA: suena al cargar, o con el primer toque en la pantalla -->
+<audio id="musica" src="./assets/El%20latido%20de%20la%20tierra.mp3" loop></audio>
+<script>
+  var musica = document.getElementById('musica');
+  function sonar() {
+    musica.volume = 0.5;
+    musica.play();
+  }
+  sonar();
+  window.addEventListener('touchstart', sonar);
+  window.addEventListener('click', sonar);
+</script>
+
+</body>
+</html>
